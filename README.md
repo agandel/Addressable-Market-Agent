@@ -2,6 +2,8 @@
 
 AI-powered Total Addressable Market (TAM) and Serviceable Obtainable Market (SOM) estimation tool. Works for any company, industry, and geography.
 
+Built with TypeScript for Node.js, using the Anthropic Claude API.
+
 ## How It Works
 
 The agent runs a 6-step analysis pipeline:
@@ -13,12 +15,18 @@ The agent runs a 6-step analysis pipeline:
 5. **Competitive Landscape** — Identifies top competitors, market shares, and concentration
 6. **SOM Estimation** — Calculates realistic obtainable market share based on competitive position
 
-Each step uses Claude as the reasoning engine, with optional web search (Brave Search API) for live market data. All estimates include confidence scores, assumptions, and source citations.
+Each step uses Claude as the reasoning engine with structured output via tool-use. Optional web search (Brave Search API) provides live market data for higher-confidence estimates.
+
+## Requirements
+
+- Node.js >= 20
+- Anthropic API key
 
 ## Setup
 
 ```bash
-pip install -e .
+npm install
+npm run build
 ```
 
 Create a `.env` file (see `.env.example`):
@@ -34,7 +42,7 @@ BRAVE_SEARCH_API_KEY=your-brave-key-here  # optional, improves accuracy
 
 ```bash
 # Basic analysis
-tam-agent analyze \
+node dist/cli.js analyze \
   --name "Acme Corp" \
   --industry "cybersecurity" \
   --geography "North America" \
@@ -42,7 +50,7 @@ tam-agent analyze \
   --revenue 50000000
 
 # Output as Markdown
-tam-agent analyze \
+node dist/cli.js analyze \
   --name "Stripe" \
   --industry "payment processing" \
   --geography "Global" \
@@ -51,7 +59,7 @@ tam-agent analyze \
   --output report.md
 
 # Output as JSON
-tam-agent analyze \
+node dist/cli.js analyze \
   --name "Rivian" \
   --industry "electric vehicles" \
   --geography "US" \
@@ -60,7 +68,17 @@ tam-agent analyze \
   --output report.json
 
 # From a JSON input file
-tam-agent from-file company.json --format markdown --output report.md
+node dist/cli.js from-file company.json --format markdown --output report.md
+```
+
+### Development mode (no build step)
+
+```bash
+npx tsx src/cli.ts analyze \
+  --name "Acme Corp" \
+  --industry "cybersecurity" \
+  --geography "US" \
+  --products "endpoint detection, SIEM"
 ```
 
 ### JSON Input File Format
@@ -76,31 +94,31 @@ tam-agent from-file company.json --format markdown --output report.md
 }
 ```
 
-### Python API
+### Node.js API
 
-```python
-from tam_agent.agent import TAMAgent
-from tam_agent.models import CompanyInput
+```typescript
+import { TAMAgent } from "tam-agent";
+import type { CompanyInput } from "tam-agent";
 
-company = CompanyInput(
-    name="Acme Corp",
-    industry="cybersecurity",
-    geography="North America",
-    products_services=["endpoint detection", "SIEM"],
-    revenue_usd=50_000_000,
-)
+const company: CompanyInput = {
+  name: "Acme Corp",
+  industry: "cybersecurity",
+  geography: "North America",
+  products_services: ["endpoint detection", "SIEM"],
+  revenue_usd: 50_000_000,
+};
 
-agent = TAMAgent()
-report = agent.run(company)
+const agent = new TAMAgent();
+const report = await agent.run(company);
 
-print(f"TAM: ${report.tam_consensus.value_usd:,.0f}")
-print(f"SOM: ${report.som.value_usd:,.0f} ({report.som.market_share_pct:.1f}%)")
+console.log(`TAM: $${report.tam_consensus.value_usd.toLocaleString()}`);
+console.log(`SOM: $${report.som.value_usd.toLocaleString()} (${report.som.market_share_pct}%)`);
 ```
 
 ## Output
 
 The agent produces:
-- **Console** (default): Rich-formatted tables and panels
+- **Console** (default): Formatted tables with ANSI colors
 - **Markdown**: Full report with tables, suitable for sharing
 - **JSON**: Machine-readable structured output
 
@@ -123,6 +141,5 @@ Every estimate includes:
 ## Tests
 
 ```bash
-pip install -e ".[dev]"
-pytest
+npm test
 ```
