@@ -38,6 +38,23 @@ BRAVE_SEARCH_API_KEY=your-brave-key-here  # optional, improves accuracy
 
 ## Usage
 
+### Web UI
+
+The easiest way to use the agent. Start the server and open your browser:
+
+```bash
+# Development mode (no build required)
+npm run serve
+
+# Or after building
+npm run build
+node dist/server.js
+```
+
+Then open **http://localhost:3000** in your browser. Fill in the form and click "Run Assessment" to get live progress updates and a full report with download options.
+
+Set a custom port with `PORT=8080 npm run serve`.
+
 ### CLI
 
 ```bash

@@ -15,3 +15,4 @@ export type {
 export { CompanyInputSchema } from "./models.js";
 export { toJson, toMarkdown } from "./report/builder.js";
 export { printReport } from "./report/formatter.js";
+export type { ProgressCallback } from "./agent.js";

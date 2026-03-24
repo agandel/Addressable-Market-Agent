@@ -13,9 +13,17 @@ import type { CompanyInput, FinalReport } from "./models.js";
 import { WebSearcher } from "./research/web-search.js";
 import { formatUsd, formatPct } from "./util/format.js";
 
+export type ProgressCallback = (
+  step: number,
+  totalSteps: number,
+  label: string,
+  detail?: string,
+) => void;
+
 export class TAMAgent {
   private llm: LLMClient;
   private searcher: WebSearcher;
+  public onProgress?: ProgressCallback;
 
   constructor(settings?: Settings) {
     const s = settings ?? getSettings();
@@ -23,43 +31,58 @@ export class TAMAgent {
     this.searcher = new WebSearcher(s);
   }
 
+  private emit(step: number, label: string, detail?: string) {
+    if (this.onProgress) {
+      this.onProgress(step, 6, label, detail);
+    }
+    const prefix = `\x1b[1;34mStep ${step}/6:\x1b[0m`;
+    if (detail) {
+      console.log(`${prefix} ${label}\n  ${detail}`);
+    } else {
+      console.log(`${prefix} ${label}`);
+    }
+  }
+
   async run(company: CompanyInput): Promise<FinalReport> {
     // Step 1: Industry Classification
-    console.log("\n\x1b[1;34mStep 1/6:\x1b[0m Classifying industry...");
+    this.emit(1, "Classifying industry...");
     const industry = await classifyIndustry(this.llm, company);
-    console.log(
-      `  NAICS ${industry.naics_code}: ${industry.naics_description} ` +
-        `(confidence: ${formatPct(industry.confidence)})`,
+    this.emit(
+      1,
+      "Industry classified",
+      `NAICS ${industry.naics_code}: ${industry.naics_description} (confidence: ${formatPct(industry.confidence)})`,
     );
 
     // Step 2: Top-down TAM
-    console.log("\n\x1b[1;34mStep 2/6:\x1b[0m Estimating TAM (top-down)...");
+    this.emit(2, "Estimating TAM (top-down)...");
     const { estimate: tamTd } = await estimateTopDown(
       this.llm,
       this.searcher,
       company,
       industry,
     );
-    console.log(
-      `  Top-down TAM: ${formatUsd(tamTd.value_usd)} ` +
-        `(confidence: ${formatPct(tamTd.confidence)})`,
+    this.emit(
+      2,
+      "Top-down TAM estimated",
+      `${formatUsd(tamTd.value_usd)} (confidence: ${formatPct(tamTd.confidence)})`,
     );
 
     // Step 3: Bottom-up TAM
-    console.log("\n\x1b[1;34mStep 3/6:\x1b[0m Estimating TAM (bottom-up)...");
+    this.emit(3, "Estimating TAM (bottom-up)...");
     const { estimate: tamBu } = await estimateBottomUp(
       this.llm,
       this.searcher,
       company,
       industry,
     );
-    console.log(
-      `  Bottom-up TAM: ${formatUsd(tamBu.value_usd)} ` +
-        `(confidence: ${formatPct(tamBu.confidence)})`,
+    this.emit(
+      3,
+      "Bottom-up TAM estimated",
+      `${formatUsd(tamBu.value_usd)} (confidence: ${formatPct(tamBu.confidence)})`,
     );
 
     // Step 4: Reconcile
-    console.log("\n\x1b[1;34mStep 4/6:\x1b[0m Reconciling TAM estimates...");
+    this.emit(4, "Reconciling TAM estimates...");
     const tamConsensus = await reconcileTam(
       this.llm,
       company.name,
@@ -67,36 +90,37 @@ export class TAMAgent {
       tamTd,
       tamBu,
     );
-    console.log(
-      `  Consensus TAM: ${formatUsd(tamConsensus.value_usd)} ` +
-        `(confidence: ${formatPct(tamConsensus.confidence)})`,
+    this.emit(
+      4,
+      "Consensus TAM calculated",
+      `${formatUsd(tamConsensus.value_usd)} (confidence: ${formatPct(tamConsensus.confidence)})`,
     );
 
     // Step 5: Competitive Landscape
-    console.log(
-      "\n\x1b[1;34mStep 5/6:\x1b[0m Analyzing competitive landscape...",
-    );
+    this.emit(5, "Analyzing competitive landscape...");
     const { landscape: competitive } = await analyzeCompetitiveLandscape(
       this.llm,
       this.searcher,
       company,
       industry,
     );
-    console.log(
-      `  Market concentration: ${competitive.market_concentration} ` +
-        `(${competitive.total_competitors_estimated} competitors)`,
+    this.emit(
+      5,
+      "Competitive landscape analyzed",
+      `${competitive.market_concentration} concentration, ~${competitive.total_competitors_estimated} competitors`,
     );
 
     // Step 6: SOM
-    console.log("\n\x1b[1;34mStep 6/6:\x1b[0m Estimating SOM...");
+    this.emit(6, "Estimating SOM...");
     const som = await estimateSom(this.llm, company, tamConsensus, competitive);
-    console.log(
-      `  SOM: ${formatUsd(som.value_usd)} (${som.market_share_pct.toFixed(1)}% share, ` +
-        `confidence: ${formatPct(som.confidence)})`,
+    this.emit(
+      6,
+      "SOM estimated",
+      `${formatUsd(som.value_usd)} (${som.market_share_pct.toFixed(1)}% share, confidence: ${formatPct(som.confidence)})`,
     );
 
     // Methodology summary
-    console.log("\n\x1b[2mGenerating methodology summary...\x1b[0m");
+    console.log("\x1b[2mGenerating methodology summary...\x1b[0m");
     const methodology = await this.llm.textQuery(
       methodologySummaryPrompt({
         name: company.name,
@@ -119,7 +143,7 @@ export class TAMAgent {
     );
 
     console.log(
-      `\n\x1b[2mToken usage: ${this.llm.totalInputTokens.toLocaleString()} input, ` +
+      `\x1b[2mToken usage: ${this.llm.totalInputTokens.toLocaleString()} input, ` +
         `${this.llm.totalOutputTokens.toLocaleString()} output\x1b[0m`,
     );
 
