@@ -40,9 +40,9 @@ program
   .option("--output <file>", "Output file path")
   .action(async (opts) => {
     const settings = getSettings();
-    if (!settings.anthropicApiKey) {
+    if (!settings.braveSearchApiKey) {
       console.error(
-        "Error: ANTHROPIC_API_KEY is not set. See .env.example.",
+        "Error: BRAVE_SEARCH_API_KEY is not set. See .env.example.",
       );
       process.exit(1);
     }
@@ -61,12 +61,6 @@ program
     console.log(
       `\n\x1b[1;32mStarting TAM/SOM Assessment for ${company.name}\x1b[0m`,
     );
-    if (!settings.braveSearchApiKey) {
-      console.log(
-        "\x1b[33mNote:\x1b[0m No BRAVE_SEARCH_API_KEY set. " +
-          "Analysis will rely on LLM knowledge only (lower confidence).",
-      );
-    }
 
     const agent = new TAMAgent(settings);
     const report = await agent.run(company);
@@ -86,8 +80,8 @@ program
   .option("--output <file>", "Output file path")
   .action(async (inputFile: string, opts) => {
     const settings = getSettings();
-    if (!settings.anthropicApiKey) {
-      console.error("Error: ANTHROPIC_API_KEY is not set.");
+    if (!settings.braveSearchApiKey) {
+      console.error("Error: BRAVE_SEARCH_API_KEY is not set. See .env.example.");
       process.exit(1);
     }
 

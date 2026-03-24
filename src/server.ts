@@ -46,8 +46,8 @@ app.post("/api/analyze", (req, res) => {
   }
 
   const settings = getSettings();
-  if (!settings.anthropicApiKey) {
-    res.status(500).json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
+  if (!settings.braveSearchApiKey) {
+    res.status(500).json({ error: "BRAVE_SEARCH_API_KEY is not configured on the server." });
     return;
   }
 

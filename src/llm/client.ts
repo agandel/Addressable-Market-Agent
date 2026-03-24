@@ -1,82 +1,117 @@
-/** Anthropic SDK wrapper with structured output via tool-use. */
+/** Brave Search AI Answers wrapper with structured output via JSON prompting. */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodToJsonSchema } from "../util/zod-to-json-schema.js";
 import type { Settings } from "../config.js";
 
+interface BraveChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface BraveChatResponse {
+  choices: Array<{
+    message: { content: string };
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+  };
+}
+
 export class LLMClient {
-  private client: Anthropic;
-  private model: string;
+  private apiKey: string;
   public totalInputTokens = 0;
   public totalOutputTokens = 0;
 
   constructor(settings: Settings) {
-    this.client = new Anthropic({ apiKey: settings.anthropicApiKey });
-    this.model = settings.tamAgentModel;
+    this.apiKey = settings.braveSearchApiKey;
+  }
+
+  private async chat(
+    messages: BraveChatMessage[],
+  ): Promise<BraveChatResponse> {
+    const resp = await fetch(
+      "https://api.search.brave.com/res/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Accept-Encoding": "gzip",
+          "x-subscription-token": this.apiKey,
+        },
+        body: JSON.stringify({
+          model: "brave",
+          stream: false,
+          messages,
+        }),
+        signal: AbortSignal.timeout(60_000),
+      },
+    );
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      throw new Error(`Brave API error ${resp.status}: ${body}`);
+    }
+
+    const data = (await resp.json()) as BraveChatResponse;
+
+    if (data.usage) {
+      this.totalInputTokens += data.usage.prompt_tokens ?? 0;
+      this.totalOutputTokens += data.usage.completion_tokens ?? 0;
+    }
+
+    return data;
   }
 
   /**
    * Send a prompt and get back a validated object matching the Zod schema.
-   * Uses Claude's tool-use feature to force structured JSON output.
+   * Instructs the model to reply with JSON matching the schema, then parses it.
    */
   async structuredQuery<T>(
     prompt: string,
     schema: z.ZodType<T>,
     schemaName: string,
     system?: string,
-    temperature = 0.2,
+    _temperature = 0.2,
   ): Promise<T> {
-    const toolName = `provide_${schemaName}`;
-    const tool: Anthropic.Tool = {
-      name: toolName,
-      description: `Provide the structured ${schemaName} result.`,
-      input_schema: zodToJsonSchema(schema) as Anthropic.Tool.InputSchema,
-    };
+    const jsonSchema = zodToJsonSchema(schema);
 
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 4096,
-      temperature,
-      system: system ?? undefined,
-      tools: [tool],
-      tool_choice: { type: "tool" as const, name: toolName },
-      messages: [{ role: "user", content: prompt }],
-    });
+    const jsonInstruction =
+      `\n\nYou MUST respond with ONLY a valid JSON object (no markdown, no code fences, no extra text) ` +
+      `matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n\n` +
+      `Schema name: ${schemaName}. Return ONLY the JSON object.`;
 
-    this.totalInputTokens += response.usage.input_tokens;
-    this.totalOutputTokens += response.usage.output_tokens;
-
-    for (const block of response.content) {
-      if (block.type === "tool_use" && block.name === toolName) {
-        return schema.parse(block.input);
-      }
+    const messages: BraveChatMessage[] = [];
+    if (system) {
+      messages.push({ role: "system", content: system });
     }
+    messages.push({ role: "user", content: prompt + jsonInstruction });
 
-    throw new Error(`LLM did not return expected tool call '${toolName}'`);
+    const response = await this.chat(messages);
+    const text = response.choices[0]?.message?.content ?? "";
+
+    // Extract JSON from the response — handle possible markdown fences
+    const jsonStr = extractJson(text);
+    const parsed = JSON.parse(jsonStr);
+    return schema.parse(parsed);
   }
 
   /** Send a prompt and get back plain text. */
   async textQuery(
     prompt: string,
     system?: string,
-    temperature = 0.2,
+    _temperature = 0.2,
   ): Promise<string> {
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 4096,
-      temperature,
-      system: system ?? undefined,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const messages: BraveChatMessage[] = [];
+    if (system) {
+      messages.push({ role: "system", content: system });
+    }
+    messages.push({ role: "user", content: prompt });
 
-    this.totalInputTokens += response.usage.input_tokens;
-    this.totalOutputTokens += response.usage.output_tokens;
-
-    return response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
+    const response = await this.chat(messages);
+    return response.choices[0]?.message?.content ?? "";
   }
 
   /** Ask the LLM to generate targeted search queries. */
@@ -97,4 +132,21 @@ export class LLMClient {
     );
     return result.queries;
   }
+}
+
+/** Extract a JSON object from text that may contain markdown fences or extra prose. */
+function extractJson(text: string): string {
+  // Try to find JSON in code fences first
+  const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fenceMatch) return fenceMatch[1].trim();
+
+  // Try to find a top-level JSON object
+  const braceStart = text.indexOf("{");
+  const braceEnd = text.lastIndexOf("}");
+  if (braceStart !== -1 && braceEnd > braceStart) {
+    return text.slice(braceStart, braceEnd + 1);
+  }
+
+  // Fall back to full text
+  return text.trim();
 }
