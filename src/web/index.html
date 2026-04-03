@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAM/SOM Assessment Agent</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --green: #22c55e;
+    --green2: #4ade80;
+    --amber: #f59e0b;
+    --red: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+
+  header h1 span { color: var(--accent2); }
+
+  header p {
+    color: var(--text2);
+    font-size: 0.95rem;
+  }
+
+  /* Form Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  label .req { color: var(--accent2); }
+
+  input, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--surface2);
+  }
+
+  textarea { resize: vertical; min-height: 70px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    margin-top: 0.5rem;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent2);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+
+  /* Progress */
+  #progress-section {
+    display: none;
+  }
+
+  #progress-section.active {
+    display: block;
+  }
+
+  .progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .progress-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .progress-bar-track {
+    width: 100%;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 3px;
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--bg);
+    transition: all 0.3s;
+  }
+
+  .step.active {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 3px solid var(--accent);
+  }
+
+  .step.done {
+    background: rgba(34, 197, 94, 0.08);
+    border-left: 3px solid var(--green);
+  }
+
+  .step-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    margin-top: 1px;
+  }
+
+  .step.pending .step-icon {
+    background: var(--surface2);
+    color: var(--text2);
+  }
+
+  .step.active .step-icon {
+    background: var(--accent);
+    color: white;
+    animation: pulse 1.5s infinite;
+  }
+
+  .step.done .step-icon {
+    background: var(--green);
+    color: white;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .step-content { flex: 1; }
+
+  .step-label { font-weight: 500; }
+
+  .step-detail {
+    font-size: 0.82rem;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  /* Results */
+  #results-section {
+    display: none;
+  }
+
+  #results-section.active {
+    display: block;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric-card {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text2);
+    margin-bottom: 0.4rem;
+  }
+
+  .metric-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+
+  .metric-sub {
+    font-size: 0.78rem;
+    color: var(--text2);
+    margin-top: 0.2rem;
+  }
+
+  .metric-value.green { color: var(--green2); }
+  .metric-value.blue { color: var(--accent2); }
+  .metric-value.amber { color: var(--amber); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 0.7rem 1.2rem;
+    color: var(--text2);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn.active {
+    color: var(--accent2);
+    border-bottom-color: var(--accent2);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .report-text {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 1.5rem;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .report-text h1, .report-text h2, .report-text h3 {
+    color: var(--accent2);
+    margin-top: 1.2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Competitors table */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  .comp-table th {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 2px solid var(--border);
+    color: var(--text2);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .comp-table td {
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--surface2);
+  }
+
+  .confidence-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .confidence-track {
+    width: 50px;
+    height: 5px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  .download-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text);
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .btn-sm:hover { background: var(--border); }
+
+  /* Error */
+  .error-banner {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 1rem;
+    color: var(--red);
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .error-banner.active { display: block; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .results-grid { grid-template-columns: 1fr; }
+    .container { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1><span>TAM/SOM</span> Assessment Agent</h1>
+    <p>AI-powered market sizing &mdash; enter a company to analyze</p>
+  </header>
+
+  <!-- Input Form -->
+  <div class="card" id="form-card">
+    <form id="analyze-form" autocomplete="off">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Company Name <span class="req">*</span></label>
+          <input type="text" id="name" placeholder="e.g. Stripe" required>
+        </div>
+        <div class="form-group">
+          <label>Industry <span class="req">*</span></label>
+          <input type="text" id="industry" placeholder="e.g. Payment Processing" required>
+        </div>
+        <div class="form-group">
+          <label>Geography <span class="req">*</span></label>
+          <input type="text" id="geography" placeholder="e.g. Global, US, Europe" required>
+        </div>
+        <div class="form-group">
+          <label>Products / Services <span class="req">*</span></label>
+          <input type="text" id="products" placeholder="e.g. Online payments, billing, financial infrastructure" required>
+        </div>
+        <div class="form-group">
+          <label>Annual Revenue (USD)</label>
+          <input type="number" id="revenue" placeholder="e.g. 50000000">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="description" placeholder="Optional additional context">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            Run Assessment
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Error -->
+  <div class="error-banner" id="error-banner"></div>
+
+  <!-- Progress -->
+  <div class="card" id="progress-section">
+    <div class="progress-header">
+      <h3>Analysis in Progress</h3>
+      <span id="progress-pct" style="color:var(--text2); font-size:0.85rem;">0%</span>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+    <div class="steps" id="steps-container">
+      <div class="step pending" data-step="1">
+        <div class="step-icon">1</div>
+        <div class="step-content">
+          <div class="step-label">Industry Classification</div>
+          <div class="step-detail"></div>
+        </div>
+      </div>
+      <div class="step pending" data-step="2">
+        <div class="step-icon">2</div>
+        <div class="step-content">
+          <div class="step-label">Top-Down TAM Estimation</div>
+          <div class="step-detail"></div>
+        </div>
+      </div>
+      <div class="step pending" data-step="3">
+        <div class="step-icon">3</div>
+        <div class="step-content">
+          <div class="step-label">Bottom-Up TAM Estimation</div>
+          <div class="step-detail"></div>
+        </div>
+      </div>
+      <div class="step pending" data-step="4">
+        <div class="step-icon">4</div>
+        <div class="step-content">
+          <div class="step-label">TAM Reconciliation</div>
+          <div class="step-detail"></div>
+        </div>
+      </div>
+      <div class="step pending" data-step="5">
+        <div class="step-icon">5</div>
+        <div class="step-content">
+          <div class="step-label">Competitive Landscape</div>
+          <div class="step-detail"></div>
+        </div>
+      </div>
+      <div class="step pending" data-step="6">
+        <div class="step-icon">6</div>
+        <div class="step-content">
+          <div class="step-label">SOM Estimation</div>
+          <div class="step-detail"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section">
+    <div class="card">
+      <h3 style="margin-bottom:1rem; font-size:1.1rem;" id="results-title">Results</h3>
+      <div class="results-grid" id="results-grid"></div>
+
+      <!-- Competitors -->
+      <div id="competitors-section" style="margin-bottom:1.5rem;"></div>
+
+      <!-- Tabs for full report -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="markdown">Markdown</button>
+        <button class="tab-btn" data-tab="json">JSON</button>
+      </div>
+
+      <div class="tab-content active" id="tab-overview">
+        <div class="report-text" id="overview-content"></div>
+      </div>
+      <div class="tab-content" id="tab-markdown">
+        <div class="report-text" id="markdown-content"></div>
+      </div>
+      <div class="tab-content" id="tab-json">
+        <div class="report-text" id="json-content"></div>
+      </div>
+
+      <div class="download-row">
+        <button class="btn-sm" id="dl-md">Download Markdown</button>
+        <button class="btn-sm" id="dl-json">Download JSON</button>
+        <button class="btn-sm" id="new-analysis">New Analysis</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('analyze-form');
+const submitBtn = document.getElementById('submit-btn');
+const progressSection = document.getElementById('progress-section');
+const resultsSection = document.getElementById('results-section');
+const errorBanner = document.getElementById('error-banner');
+const progressBar = document.getElementById('progress-bar');
+const progressPct = document.getElementById('progress-pct');
+
+let reportMarkdown = '';
+let reportJson = '';
+let reportData = null;
+
+function showError(msg) {
+  errorBanner.textContent = msg;
+  errorBanner.classList.add('active');
+}
+
+function hideError() {
+  errorBanner.classList.remove('active');
+}
+
+function resetProgress() {
+  document.querySelectorAll('.step').forEach(el => {
+    el.className = 'step pending';
+    el.querySelector('.step-detail').textContent = '';
+  });
+  progressBar.style.width = '0%';
+  progressPct.textContent = '0%';
+}
+
+function formatUsd(n) {
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(1) + 'T';
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+
+function confColor(c) {
+  if (c >= 0.7) return 'var(--green)';
+  if (c >= 0.4) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function confBar(c) {
+  const color = confColor(c);
+  return `<span class="confidence-bar">
+    <span class="confidence-track"><span class="confidence-fill" style="width:${(c*100).toFixed(0)}%;background:${color}"></span></span>
+    ${(c*100).toFixed(0)}%
+  </span>`;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError();
+  resetProgress();
+
+  const payload = {
+    name: document.getElementById('name').value.trim(),
+    industry: document.getElementById('industry').value.trim(),
+    geography: document.getElementById('geography').value.trim(),
+    products: document.getElementById('products').value.trim(),
+    revenue: document.getElementById('revenue').value || undefined,
+    description: document.getElementById('description').value.trim() || undefined,
+  };
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83"/></svg> Analyzing...';
+  progressSection.classList.add('active');
+  resultsSection.classList.remove('active');
+
+  // Add spinner animation
+  if (!document.getElementById('spin-style')) {
+    const style = document.createElement('style');
+    style.id = 'spin-style';
+    style.textContent = '@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+  }
+
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      showError(err.error || 'Request failed');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Run Assessment';
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let lastCompletedStep = 0;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse SSE events
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (const part of parts) {
+        const lines = part.split('\n');
+        let event = '', data = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) event = line.slice(7);
+          if (line.startsWith('data: ')) data = line.slice(6);
+        }
+        if (!event || !data) continue;
+
+        const parsed = JSON.parse(data);
+
+        if (event === 'progress') {
+          const { step, totalSteps, label, detail } = parsed;
+          const pct = Math.round((step / totalSteps) * 100);
+          progressBar.style.width = pct + '%';
+          progressPct.textContent = pct + '%';
+
+          // Mark previous steps as done
+          for (let i = 1; i < step; i++) {
+            const el = document.querySelector(`.step[data-step="${i}"]`);
+            if (el && !el.classList.contains('done')) {
+              el.className = 'step done';
+              el.querySelector('.step-icon').textContent = '✓';
+            }
+          }
+
+          // If detail present, this step just completed
+          if (detail) {
+            const el = document.querySelector(`.step[data-step="${step}"]`);
+            if (el) {
+              el.className = 'step done';
+              el.querySelector('.step-icon').textContent = '✓';
+              el.querySelector('.step-detail').textContent = detail;
+            }
+            lastCompletedStep = step;
+          } else {
+            // Step is starting
+            const el = document.querySelector(`.step[data-step="${step}"]`);
+            if (el) {
+              el.className = 'step active';
+            }
+          }
+        }
+
+        if (event === 'result') {
+          reportData = parsed.report;
+          reportMarkdown = parsed.markdown;
+          reportJson = parsed.json;
+          showResults(parsed.report);
+        }
+
+        if (event === 'error') {
+          showError(parsed.message);
+        }
+      }
+    }
+  } catch (err) {
+    showError('Connection error: ' + err.message);
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> Run Assessment';
+});
+
+function showResults(r) {
+  resultsSection.classList.add('active');
+  document.getElementById('results-title').textContent = `Results for ${r.company.name}`;
+
+  // Metric cards
+  const grid = document.getElementById('results-grid');
+  grid.innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Consensus TAM</div>
+      <div class="metric-value blue">${formatUsd(r.tam_consensus.value_usd)}</div>
+      <div class="metric-sub">${confBar(r.tam_consensus.confidence)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Serviceable Obtainable Market</div>
+      <div class="metric-value green">${formatUsd(r.som.value_usd)}</div>
+      <div class="metric-sub">${r.som.market_share_pct.toFixed(1)}% share &mdash; ${confBar(r.som.confidence)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Market Concentration</div>
+      <div class="metric-value amber" style="text-transform:capitalize">${r.competitive_landscape.market_concentration}</div>
+      <div class="metric-sub">~${r.competitive_landscape.total_competitors_estimated} competitors</div>
+    </div>
+  `;
+
+  // Competitors table
+  const compSec = document.getElementById('competitors-section');
+  if (r.competitive_landscape.top_competitors.length > 0) {
+    let rows = r.competitive_landscape.top_competitors.map(c => `
+      <tr>
+        <td>${c.name}</td>
+        <td>${c.estimated_revenue_usd ? formatUsd(c.estimated_revenue_usd) : 'N/A'}</td>
+        <td>${c.market_share_pct != null ? c.market_share_pct.toFixed(1) + '%' : 'N/A'}</td>
+      </tr>
+    `).join('');
+    compSec.innerHTML = `
+      <h4 style="font-size:0.9rem; margin-bottom:0.5rem; color:var(--text2);">TOP COMPETITORS</h4>
+      <table class="comp-table">
+        <thead><tr><th>Company</th><th>Est. Revenue</th><th>Market Share</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  // Overview: TAM comparison + methodology
+  const overview = document.getElementById('overview-content');
+  overview.innerHTML = `<strong>TAM Estimates</strong>
+
+Top-Down:  ${formatUsd(r.tam_top_down.value_usd)}  (${(r.tam_top_down.confidence*100).toFixed(0)}% confidence)
+  Method: ${r.tam_top_down.method}
+  Assumptions:
+${r.tam_top_down.assumptions.map(a => '    - ' + a).join('\n')}
+
+Bottom-Up: ${formatUsd(r.tam_bottom_up.value_usd)}  (${(r.tam_bottom_up.confidence*100).toFixed(0)}% confidence)
+  Method: ${r.tam_bottom_up.method}
+  Assumptions:
+${r.tam_bottom_up.assumptions.map(a => '    - ' + a).join('\n')}
+
+Consensus: ${formatUsd(r.tam_consensus.value_usd)}  (${(r.tam_consensus.confidence*100).toFixed(0)}% confidence)
+  Method: ${r.tam_consensus.method}
+
+<strong>SOM Analysis</strong>
+
+  Value: ${formatUsd(r.som.value_usd)} (${r.som.market_share_pct.toFixed(1)}% market share)
+  Methodology: ${r.som.methodology}
+  Assumptions:
+${r.som.assumptions.map(a => '    - ' + a).join('\n')}
+
+<strong>Methodology Notes</strong>
+
+${r.methodology_notes}`;
+
+  // Markdown & JSON tabs
+  document.getElementById('markdown-content').textContent = reportMarkdown;
+  document.getElementById('json-content').textContent = reportJson;
+
+  // Scroll to results
+  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Downloads
+document.getElementById('dl-md').addEventListener('click', () => {
+  download(reportMarkdown, (reportData?.company?.name || 'report') + '.md', 'text/markdown');
+});
+
+document.getElementById('dl-json').addEventListener('click', () => {
+  download(reportJson, (reportData?.company?.name || 'report') + '.json', 'application/json');
+});
+
+document.getElementById('new-analysis').addEventListener('click', () => {
+  resultsSection.classList.remove('active');
+  progressSection.classList.remove('active');
+  resetProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+function download(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>
